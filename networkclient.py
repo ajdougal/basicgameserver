@@ -3,6 +3,14 @@ import socket
 import threading
 import arcade
 import os
+#import evdev
+from evdev import InputDevice, categorize, ecodes
+
+#creates object 'gamepad' to store the data
+gamepad = InputDevice('/dev/input/event5')
+
+leftjoyx = 0
+leftjoyy = 0
 
 server_direction = 'none'
 client_direction = 'none'
@@ -13,6 +21,29 @@ SCREEN_HEIGHT = 500
 MOVEMENT_SPEED = 5
 
 SPRITE_SCALING = 0.25
+
+class ControllerInputStreamThread(object):
+    def __init__(self, interval= 0.02):
+        self.interval = interval
+
+        thread = threading.Thread(target=self.run, args=())
+        thread.daemon = True
+        thread.start()
+
+    def run(self):
+        global leftjoyx, leftjoyy
+        for event in gamepad.read_loop():
+             # event type 3 indicates an absolute axis event (joystick in our case) 
+            if event.type == 3:
+                # make sure it's a left joystick event (and not triggers/right joystick)
+                # 0,1 are leftx/lefty
+                # 2 is left trigger z
+                # 3,4 are rightx/righty
+                # 5 is right trigger z
+                if event.code == 0:
+                    leftjoyx = event.value
+                elif event.code == 1:
+                    leftjoyy = event.value
 
 class NetworkingInboundThread(object):
     def __init__(self, interval=0.05):
@@ -126,6 +157,9 @@ class MyApplication(arcade.Window):
 
     def update(self, delta_time):
         self.player_list.update()
+        global leftjoyx, leftjoyy
+        print (leftjoyx, leftjoyy)
+
 
     def on_key_press(self, key, modifiers):
         global client_direction
@@ -163,6 +197,7 @@ class ArcadeGameThread(object):
 def main():
     inthread = NetworkingInboundThread()
     outthread = NetworkingOutboundThread()
+    controllerthread = ControllerInputStreamThread()
     
     window = MyApplication(500, 500)
     window.setup()
