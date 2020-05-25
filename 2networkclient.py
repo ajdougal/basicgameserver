@@ -4,10 +4,15 @@ import threading
 import arcade
 import os
 #import evdev
+import evdev
 from evdev import InputDevice, categorize, ecodes
 
+gamepad = None
+
+for path in evdev.list_devices():
+    gamepad = InputDevice(path)
 #creates object 'gamepad' to store the data
-gamepad = InputDevice('/dev/input/event5')
+#gamepad = InputDevice('/dev/input/event5')
 
 leftjoyx = 0
 leftjoyy = 0
@@ -49,11 +54,11 @@ class ControllerInputStreamThread(object):
                     leftjoyy = -1*event.value
 
 class NetworkingInboundThread(object):
-    def __init__(self, interval=0.05):
+    def __init__(self, interval=0.03):
         self.interval = interval
 
         self.in_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.server_address = ('localhost', 10001)
+        self.server_address = ('192.168.1.5', 10010)
         self.in_sock.bind(self.server_address)
 
 
@@ -66,6 +71,7 @@ class NetworkingInboundThread(object):
         while True:
             global server_playerx, server_playery
             data, addr = self.in_sock.recvfrom(4096)
+            print (addr)
 
             if data:
                 try:
@@ -78,10 +84,10 @@ class NetworkingInboundThread(object):
             time.sleep(self.interval)
 
 class NetworkingOutboundThread(object):
-    def __init__(self, interval = 0.05):
+    def __init__(self, interval = 0.03):
         self.interval = interval
         self.out_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.server_address = ('localhost', 10000)
+        self.server_address = ('192.168.1.5', 10000)
 
         thread = threading.Thread(target=self.run, args=())
         thread.daemon = True
@@ -174,5 +180,20 @@ def main():
     window.setup()
     arcade.run()
 
+def connect_to_server():
+    TCP_IP = '192.168.1.5'
+    TCP_PORT = 10001
+    BUFFER_SIZE = 1024
+    MESSAGE = "192.168.1.5;10010;pnum:p1".encode()
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((TCP_IP, TCP_PORT))
+    s.send(MESSAGE)
+    data = s.recv(BUFFER_SIZE)
+    s.close()
+
+    print ("received data:{}".format(data))
+
 if __name__ == "__main__":
+    connect_to_server()
     main()
